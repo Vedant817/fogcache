@@ -22,6 +22,42 @@ tests, jacoco, packaging). The LGTM Testcontainers smoke tests start
 machine without Docker they degrade to plain context loads, so the build is
 green either way. Start Docker Desktop if you want the full smoke coverage.
 
+## Local platform stack
+
+All local data services are defined in the root `compose.yaml` (pinned
+images, health checks, resource limits, named volumes):
+
+```bash
+docker compose up -d            # persistent mode (named volumes)
+docker compose ps               # all services should report healthy
+docker compose down -v          # teardown AND wipe all data
+```
+
+| Service | Image | Port(s) | Credentials |
+|---|---|---|---|
+| PostgreSQL 17 | `postgres:17-alpine` | 5432 | `fogcache` / `fogcache_dev_password` (db `fogcache`) |
+| Redis 7 | `redis:7.4-alpine` | 6379 | — |
+| Kafka 4 (KRaft) | `apache/kafka:4.1.0` | 9092 | — |
+| MinIO | `minio/minio:RELEASE.2025-04-22T22-12-26Z` | 9000 (API), 9001 (console) | `fogcache` / `fogcache_dev_password` |
+
+MinIO starts with two empty buckets (`fogcache-objects`, `fogcache-policies`)
+created by the `minio-init` one-shot service, which waits on the MinIO health
+check. Kafka is a single KRaft node (no ZooKeeper) and auto-creates topics.
+
+Disposable mode swaps the named volumes for tmpfs, so nothing survives a
+restart and teardown is instant:
+
+```bash
+docker compose -f compose.yaml -f compose.disposable.yaml up -d
+```
+
+Ports and credentials are configurable via a local `.env` (see `.env.example` —
+copy it to `.env` and edit; `.env` is gitignored).
+
+> The per-service `compose.yaml` files (used by `spring-boot-docker-compose`
+> when a service starts from an IDE) are independent of this stack; both can
+> be used side by side on different ports.
+
 ## What each module is
 
 See `docs/architecture/module-ownership.md` for the ownership matrix and

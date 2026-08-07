@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & verify (quality gates, tests, contracts, SBOM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # Runs every quality gate bound to the verify phase: enforcer rules,
+      # spotless, checkstyle, spotbugs, unit tests, jacoco coverage, package.
+      - name: Maven verify
+        run: ./mvnw -B -ntp verify
+
+      # Contract validation: OpenAPI specs must lint clean.
+      - name: Lint OpenAPI contracts
+        run: npx --yes @redocly/cli lint fogcache-contracts/src/main/resources/openapi/*.yaml
+
+      # Reproducible-build SBOM for the whole reactor.
+      - name: Generate aggregate SBOM
+        run: ./mvnw -B -ntp cyclonedx:makeAggregateBom -DskipTests
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fogcache-sbom
+          path: target/fogcache-sbom.json
+          if-no-files-found: error
+
+  dependency-check:
+    name: OWASP dependency-check
+    runs-on: ubuntu-latest
+    # The NVD feed is sometimes rate-limited or flaky; findings are reviewed
+    # as a separate track, so a feed failure must not block the main build.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Dependency check (CVSS >= 7 fails)
+        run: ./mvnw -B -ntp -Psecurity verify -DskipTests
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}

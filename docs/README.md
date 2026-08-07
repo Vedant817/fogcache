@@ -4,6 +4,14 @@ Status: Agreed baseline · Version: 0.1.0
 
 Milestone **00 — Product definition & architecture** deliverables. Master spec: `docs/technical-design.md`.
 
+## Engineering (milestone 01)
+
+| Doc | Covers |
+|---|---|
+| `../CONTRIBUTING.md` | Build, quality gates, dependency hygiene, commit conventions, CI |
+| `development.md` | Local setup, first build, running services, troubleshooting |
+| `architecture/module-ownership.md` | Build-time module graph, ownership matrix, dependency rules (VED-36) |
+
 ## Product
 
 | Doc | Covers |

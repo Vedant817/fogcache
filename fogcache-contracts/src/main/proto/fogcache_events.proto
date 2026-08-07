@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+// Kafka event contracts (ADR-0004). One record type per topic; all records carry
+// the shared envelope fields (event_id, timestamp, tenant/origin, correlation).
+// Partitioning: access events by key_hash; origin-scoped events by origin_id.
+// Compatibility rules: see docs/architecture/contract-conventions.md.
+
+package fogcache.events.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "io.fogcache.contracts.events.v1";
+option java_multiple_files = true;
+option java_outer_classname = "FogcacheEventsProto";
+
+// Shared envelope -----------------------------------------------------------
+
+message EventEnvelope {
+  string event_id = 1;          // uuid
+  string event_type = 2;        // FQN of the concrete event message
+  string tenant_id = 3;
+  string origin_id = 4;
+  string correlation_id = 5;
+  google.protobuf.Timestamp occurred_at = 6;
+  string producer_node = 7;     // node id or "control" | "analytics"
+  string source = 8;            // EDGE | ROUTING | CONTROL | ANALYTICS | CONTENT
+}
+
+// Access events (topic: fogcache.events.access) ------------------------------
+
+message AccessEvent {
+  EventEnvelope envelope = 1;
+  string key_hash = 2;
+  string normalized_key = 3;
+  bool hit = 4;
+  bool stale = 5;
+  bool bypassed = 6;
+  int32 http_status = 7;
+  int64 payload_size = 8;
+  int64 latency_ms = 9;
+  string traffic_class = 10;    // observed class at serve time
+  int64 waiter_count = 11;      // concurrent waiters on miss
+}
+
+// Invalidation events (topic: fogcache.events.invalidation) ------------------
+
+message InvalidationEvent {
+  EventEnvelope envelope = 1;
+  int64 origin_seq = 2;         // monotonic per origin (ordering contract)
+  int64 origin_generation = 3;
+  string kind = 4;              // EXACT | PREFIX | TAG | ORIGIN | TENANT
+  string target = 5;            // key hash, prefix, tag, or "*"
+  string idempotency_key = 6;
+  string actor = 7;             // admin user id or "content-service"
+}
+
+// Replication events (topic: fogcache.events.replication) --------------------
+
+message ReplicationEvent {
+  EventEnvelope envelope = 1;
+  string key_hash = 2;
+  string action = 3;            // TRANSFER | COMMITTED | REPAIR | PROMOTED | DRAIN | EVICTED
+  string from_node = 4;
+  string to_node = 5;
+  int64 origin_generation = 6;
+  int64 entry_generation = 7;
+  bool checksum_ok = 8;
+}
+
+// Classification events (topic: fogcache.events.classification) --------------
+
+message ClassificationEvent {
+  EventEnvelope envelope = 1;
+  string key_hash = 2;
+  string previous_class = 3;
+  string current_class = 4;     // HOT | WARM | COLD
+  repeated FeatureValue features = 5;
+  string classifier = 6;        // RULES | MODEL:<model_id>:<version>
+  bool shadow_mode = 7;
+}
+
+message FeatureValue {
+  string name = 1;
+  double value = 2;
+}
+
+// Placement events (topic: fogcache.events.placement) ------------------------
+
+message PlacementEvent {
+  EventEnvelope envelope = 1;
+  string key_hash = 2;
+  string action = 3;            // REPLICATE | PIN | UNPIN | EVICT | PREFETCH | NOOP
+  int32 target_replicas = 4;
+  repeated NodeRef targets = 5;
+  string reason = 6;            // classifier/model explanation
+  string model_version = 7;
+}
+
+message NodeRef {
+  string node_id = 1;
+  string address = 2;
+}
+
+// Prefetch events (topic: fogcache.events.prefetch) --------------------------
+
+message PrefetchEvent {
+  EventEnvelope envelope = 1;
+  string key_hash = 2;
+  bool outcome_success = 3;
+  bool demanded_within_horizon = 4;
+  int64 bytes_fetched = 5;
+  int64 bytes_wasted = 6;
+  string reason = 7;
+}
+
+// Audit events (topic: fogcache.events.audit) --------------------------------
+
+message AuditEvent {
+  EventEnvelope envelope = 1;
+  string actor = 2;             // user id, service principal, or pipeline
+  string action = 3;            // e.g. tenant.create, key.invalidate, model.promote
+  string resource_type = 4;
+  string resource_id = 5;
+  string result = 6;            // SUCCESS | FAILURE | DENIED
+  string detail = 7;            // limited, no secrets or PII
+}

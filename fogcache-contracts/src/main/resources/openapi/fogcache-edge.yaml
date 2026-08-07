@@ -1,0 +1,135 @@
+openapi: 3.0.3
+info:
+  title: FogCache Edge Data Plane
+  version: 1.0.0
+  description: >
+    Public edge API. Serves cached representations for GET/HEAD.
+    Key semantics per docs/architecture/cache-semantics.md; error and correlation
+    conventions per docs/architecture/contract-conventions.md.
+servers:
+  - url: https://edge.fogcache.example
+tags:
+  - name: cache
+    description: Cached content access
+paths:
+  /cache/{originAlias}/{path}:
+    get:
+      tags: [cache]
+      operationId: getObject
+      summary: Fetch a cached object from the given origin
+      description: >
+        `path` spans all remaining path segments of the request URL
+        (the edge expands it at the router level). Query parameters are
+        canonicalized per cache-semantics.md section 2.
+      parameters:
+        - name: originAlias
+          in: path
+          required: true
+          schema: { type: string }
+          description: Tenant origin alias defined in control plane
+        - name: path
+          in: path
+          required: true
+          style: simple
+          schema: { type: string }
+          description: Object path (all remaining segments)
+        - name: If-None-Match
+          in: header
+          schema: { type: string }
+        - name: If-Modified-Since
+          in: header
+          schema: { type: string, format: http-date }
+        - name: Cache-Control
+          in: header
+          schema: { type: string }
+          description: no-cache / no-store / max-age=0 honored
+      responses:
+        '200':
+          description: Representation served (HIT, MISS, STALE, STALE-ERROR, or revalidated)
+          headers:
+            X-FogCache-Status:
+              schema:
+                type: string
+                enum: [HIT, MISS, STALE, STALE-ERROR, BYPASS]
+              description: Cache disposition of this response
+            X-FogCache-Node: { schema: { type: string } }
+            X-FogCache-Topology: { schema: { type: string } }
+            X-Request-Id: { schema: { type: string } }
+            Age: { schema: { type: integer } }
+            Cache-Control: { schema: { type: string } }
+            ETag: { schema: { type: string } }
+          content:
+            '*/*':
+              schema: { type: string, format: binary }
+        '301':
+          description: Permanent redirect stored (if policy permits)
+          headers:
+            Location: { schema: { type: string } }
+        '304':
+          description: Not modified (client conditional matched)
+          headers:
+            ETag: { schema: { type: string } }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Origin alias unknown or object not found
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '413':
+          description: Object exceeds configured limits
+        '502':
+          description: Origin unreachable and no stale representation available
+        '503':
+          description: No healthy edge node available for the key
+    head:
+      tags: [cache]
+      operationId: headObject
+      summary: Fetch headers only (shares the GET representation)
+      responses:
+        '200':
+          description: Same headers as GET, empty body
+          headers:
+            X-FogCache-Status: { schema: { type: string, enum: [HIT, MISS, STALE, STALE-ERROR, BYPASS] } }
+            X-FogCache-Node: { schema: { type: string } }
+            X-FogCache-Topology: { schema: { type: string } }
+            X-Request-Id: { schema: { type: string } }
+            Age: { schema: { type: integer } }
+            Content-Length: { schema: { type: integer } }
+        '304': { description: Not modified }
+        '404': { description: Not found }
+components:
+  responses:
+    BadRequest:
+      description: Malformed request (invalid path, header, or query)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: Tenant/origin policy forbids the request
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    MethodNotAllowed:
+      description: Method not supported in v1
+      headers:
+        Allow: { schema: { type: string } }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri }
+        correlationId: { type: string }

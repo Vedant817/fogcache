@@ -1,0 +1,193 @@
+openapi: 3.0.3
+info:
+  title: FogCache Routing Service
+  version: 1.0.0
+  description: >
+    Node registration, health leases, consistent-hash topology, and routing
+    decisions (ADR-0006). Conventions per docs/architecture/contract-conventions.md.
+servers:
+  - url: https://routing.fogcache.example
+tags:
+  - name: routing
+  - name: nodes
+paths:
+  /v1/routes:resolve:
+    post:
+      tags: [routing]
+      operationId: resolveRoutes
+      summary: Resolve primary and fallback edge nodes for a key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveRequest'
+      responses:
+        '200':
+          description: Ordered candidate nodes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResolveResponse' }
+        '404':
+          description: Tenant or origin unknown
+        '503':
+          description: No eligible node (all draining/unhealthy)
+  /v1/topology:
+    get:
+      tags: [routing]
+      operationId: getTopology
+      summary: Current versioned topology snapshot
+      parameters:
+        - name: if-version
+          in: header
+          schema: { type: string }
+          description: Last known topology version for delta responses
+      responses:
+        '200':
+          description: Topology snapshot (or delta when if-version matches)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Topology' }
+  /v1/topology:dry-run:
+    post:
+      tags: [routing]
+      operationId: dryRunTopology
+      summary: Simulate membership change and report movement before applying
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                removedNodes: { type: array, items: { type: string } }
+                addedNodes: { type: array, items: { $ref: '#/components/schemas/NodeRegistration' } }
+      responses:
+        '200':
+          description: Estimated key movement percentage and affected nodes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  estimatedMovementPercent: { type: number }
+                  affectedKeys: { type: integer }
+                  perNode: { type: object, additionalProperties: { type: number } }
+  /v1/nodes/register:
+    post:
+      tags: [nodes]
+      operationId: registerNode
+      summary: Register an edge node and obtain a lease
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NodeRegistration' }
+      responses:
+        '200':
+          description: Registration accepted with lease
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NodeLease' }
+  /v1/nodes/{nodeId}/heartbeat:
+    post:
+      tags: [nodes]
+      operationId: heartbeatNode
+      summary: Renew health lease and report capacity
+      parameters:
+        - name: nodeId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NodeHeartbeat' }
+      responses:
+        '200':
+          description: Lease renewed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NodeLease' }
+  /v1/nodes/{nodeId}:drain:
+    post:
+      tags: [nodes]
+      operationId: drainNode
+      summary: Request graceful drain (stops new ownership)
+      parameters:
+        - name: nodeId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '202':
+          description: Drain requested; replicas pushed before withdrawal
+components:
+  schemas:
+    ResolveRequest:
+      type: object
+      required: [tenantId, originId, keyHash, keyVersion]
+      properties:
+        tenantId: { type: string, format: uuid }
+        originId: { type: string, format: uuid }
+        keyHash: { type: string }
+        keyVersion: { type: integer }
+        excludeNodes: { type: array, items: { type: string } }
+    ResolveResponse:
+      type: object
+      properties:
+        topologyVersion: { type: string }
+        primary:
+          $ref: '#/components/schemas/NodeRef'
+        fallbacks:
+          type: array
+          items: { $ref: '#/components/schemas/NodeRef' }
+    NodeRef:
+      type: object
+      properties:
+        nodeId: { type: string }
+        address: { type: string }
+        port: { type: integer }
+        weight: { type: number }
+    Topology:
+      type: object
+      properties:
+        version: { type: string }
+        nodes:
+          type: array
+          items: { $ref: '#/components/schemas/NodeState' }
+        virtualNodesPerNode: { type: integer }
+    NodeState:
+      type: object
+      properties:
+        nodeId: { type: string }
+        address: { type: string }
+        port: { type: integer }
+        status: { type: string, enum: [HEALTHY, DRAINING, SUSPECT, DOWN] }
+        capacityBytes: { type: integer }
+        protocolVersion: { type: integer }
+        tenants: { type: array, items: { type: string, format: uuid } }
+    NodeRegistration:
+      type: object
+      required: [nodeId, address, port]
+      properties:
+        nodeId: { type: string }
+        address: { type: string }
+        port: { type: integer }
+        capacityBytes: { type: integer }
+        protocolVersion: { type: integer }
+        tenants: { type: array, items: { type: string, format: uuid } }
+    NodeHeartbeat:
+      type: object
+      required: [nodeId]
+      properties:
+        nodeId: { type: string }
+        capacityBytes: { type: integer }
+        status: { type: string, enum: [HEALTHY, DRAINING, NOT_READY] }
+    NodeLease:
+      type: object
+      properties:
+        nodeId: { type: string }
+        leaseExpiresAt: { type: string, format: date-time }
+        topologyVersion: { type: string }

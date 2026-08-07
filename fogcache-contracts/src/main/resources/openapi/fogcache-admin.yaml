@@ -1,0 +1,527 @@
+openapi: 3.0.3
+info:
+  title: FogCache Admin / Control Plane
+  version: 1.0.0
+  description: >
+    Secured administrative APIs (OIDC + RBAC: viewer, operator, tenant-admin,
+    platform-admin, security-auditor). Every mutation is idempotent (Idempotency-Key
+    header), audited, and returns Problem JSON on error. Conventions per
+    docs/architecture/contract-conventions.md.
+servers:
+  - url: https://control.fogcache.example
+security:
+  - bearerAuth: []
+tags:
+  - name: tenants
+  - name: origins
+  - name: policies
+  - name: quotas
+  - name: keys
+  - name: nodes
+  - name: analytics
+  - name: models
+  - name: audit
+paths:
+  /v1/admin/tenants:
+    post:
+      tags: [tenants]
+      operationId: createTenant
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Tenant' }
+      responses:
+        '201': { description: Tenant created }
+        '409': { description: Tenant slug already exists }
+    get:
+      tags: [tenants]
+      operationId: listTenants
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Page' }
+  /v1/admin/tenants/{tenantId}:
+    get:
+      tags: [tenants]
+      operationId: getTenant
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Tenant' }
+        '404': { description: Not found }
+    patch:
+      tags: [tenants]
+      operationId: updateTenant
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Tenant' }
+      responses:
+        '200': { description: Updated }
+    delete:
+      tags: [tenants]
+      operationId: deleteTenant
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      responses:
+        '204': { description: Deleted (all origins/keys purged, audited) }
+  /v1/admin/tenants/{tenantId}/origins:
+    post:
+      tags: [origins]
+      operationId: createOrigin
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Origin' }
+      responses:
+        '201': { description: Origin created }
+        '400': { description: Origin host not on allowlist (SSRF control, T-03) }
+    get:
+      tags: [origins]
+      operationId: listOrigins
+      parameters:
+        - { $ref: '#/components/parameters/TenantId' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Page' }
+  /v1/admin/tenants/{tenantId}/origins/{originId}:
+    get:
+      tags: [origins]
+      operationId: getOrigin
+      parameters:
+        - { $ref: '#/components/parameters/TenantId' }
+        - { $ref: '#/components/parameters/OriginId' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Origin' }
+    patch:
+      tags: [origins]
+      operationId: updateOrigin
+      parameters:
+        - { $ref: '#/components/parameters/TenantId' }
+        - { $ref: '#/components/parameters/OriginId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Origin' }
+      responses:
+        '200': { description: Updated }
+    delete:
+      tags: [origins]
+      operationId: deleteOrigin
+      parameters:
+        - { $ref: '#/components/parameters/TenantId' }
+        - { $ref: '#/components/parameters/OriginId' }
+      responses:
+        '204': { description: Deleted and invalidated }
+  /v1/admin/tenants/{tenantId}/policies:
+    get:
+      tags: [policies]
+      operationId: listPolicies
+      parameters:
+        - { $ref: '#/components/parameters/TenantId' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Page' }
+    post:
+      tags: [policies]
+      operationId: createPolicy
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CachePolicy' }
+      responses:
+        '201': { description: Policy created }
+  /v1/admin/tenants/{tenantId}/quotas:
+    get:
+      tags: [quotas]
+      operationId: getQuota
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quota' }
+    put:
+      tags: [quotas]
+      operationId: setQuota
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Quota' }
+      responses:
+        '200': { description: Quota updated }
+  /v1/admin/tenants/{tenantId}/keys/inspect:
+    post:
+      tags: [keys]
+      operationId: inspectKey
+      summary: Inspect one or more keys (admin/operator/tenant-admin)
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KeyQuery' }
+      responses:
+        '200':
+          description: Entry metadata across nodes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/KeyInspection' }
+  /v1/admin/tenants/{tenantId}/keys:invalidate:
+    post:
+      tags: [keys]
+      operationId: invalidateKeys
+      summary: Purge exact/prefix/tag matches (idempotent, generation bump)
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvalidateRequest' }
+      responses:
+        '202': { description: Accepted; converges per invalidation SLO }
+  /v1/admin/tenants/{tenantId}/keys:warm:
+    post:
+      tags: [keys]
+      operationId: warmKeys
+      summary: Prefetch a list of keys now
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KeyList' }
+      responses:
+        '202': { description: Accepted }
+  /v1/admin/tenants/{tenantId}/keys:pin:
+    post:
+      tags: [keys]
+      operationId: pinKeys
+      summary: Pin keys (protected from eviction)
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KeyList' }
+      responses:
+        '200': { description: Pinned }
+  /v1/admin/tenants/{tenantId}/keys:unpin:
+    post:
+      tags: [keys]
+      operationId: unpinKeys
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KeyList' }
+      responses:
+        '200': { description: Unpinned }
+  /v1/admin/tenants/{tenantId}/keys:evict:
+    post:
+      tags: [keys]
+      operationId: evictKeys
+      parameters: [{ $ref: '#/components/parameters/TenantId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KeyList' }
+      responses:
+        '200': { description: Evicted locally }
+  /v1/nodes:
+    get:
+      tags: [nodes]
+      operationId: listNodes
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/NodeView' }
+  /v1/hot-keys:
+    get:
+      tags: [analytics]
+      operationId: listHotKeys
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: minClass
+          in: query
+          schema: { type: string, enum: [HOT, WARM] }
+          default: HOT
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Page' }
+  /v1/prefetch/decisions:
+    get:
+      tags: [analytics]
+      operationId: listPrefetchDecisions
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Page' }
+  /v1/models:
+    get:
+      tags: [models]
+      operationId: listModels
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ModelInfo' }
+    post:
+      tags: [models]
+      operationId: registerModel
+      summary: Register a model artifact (checksum-verified, versioned)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ModelInfo' }
+      responses:
+        '201': { description: Registered }
+  /v1/models/{modelId}:promote:
+    post:
+      tags: [models]
+      operationId: promoteModel
+      summary: Promote model to serving (only after shadow validation)
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Promoted }
+        '409': { description: Shadow metrics below promotion bar }
+  /v1/flags:
+    get:
+      tags: [models]
+      operationId: listFlags
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: { type: boolean }
+    patch:
+      tags: [models]
+      operationId: setFlag
+      summary: Kill switches (e.g., disable-ml, disable-prefetch)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: { type: boolean }
+      responses:
+        '200': { description: Flags updated (audited) }
+  /v1/audit/export:
+    get:
+      tags: [audit]
+      operationId: exportAudit
+      summary: Export audit records (security-auditor, platform-admin)
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: actor
+          in: query
+          schema: { type: string }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PageSize' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Page' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    OriginId:
+      name: originId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, default: 0, minimum: 0 }
+    PageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, default: 100, maximum: 1000 }
+  schemas:
+    Tenant:
+      type: object
+      required: [name, slug]
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        name: { type: string }
+        slug: { type: string, pattern: '^[a-z0-9-]{3,64}$' }
+        status: { type: string, enum: [ACTIVE, SUSPENDED], default: ACTIVE }
+        maxOrigins: { type: integer }
+    Origin:
+      type: object
+      required: [alias, baseUrl, type]
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        alias: { type: string }
+        baseUrl: { type: string, format: uri }
+        type: { type: string, enum: [HTTP, FOG_CONTENT] }
+        allowedHosts: { type: array, items: { type: string } }
+        auth:
+          type: object
+          properties:
+            type: { type: string, enum: [NONE, BASIC, OAUTH2] }
+        policyId: { type: string, format: uuid }
+        versioning: { type: boolean, default: true }
+    CachePolicy:
+      type: object
+      required: [name]
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        name: { type: string }
+        defaultTtl: { type: integer, description: seconds }
+        staleWhileRevalidate: { type: integer }
+        staleIfError: { type: integer }
+        negativeTtl: { type: integer, default: 10 }
+        varyAllowlist: { type: array, items: { type: string } }
+        stripQueryParams: { type: array, items: { type: string } }
+        allowPrivateCache: { type: boolean, default: false }
+        maxObjectSize: { type: integer, default: 104857600 }
+        allowListedStatuses: { type: array, items: { type: integer } }
+    Quota:
+      type: object
+      required: [tenantId]
+      properties:
+        tenantId: { type: string, format: uuid }
+        maxEntries: { type: integer }
+        maxBytes: { type: integer }
+        maxRps: { type: integer }
+        replicationFactor: { type: integer, default: 2 }
+        prefetchBudgetBytesPerDay: { type: integer }
+    KeyQuery:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/KeySelector'
+    KeySelector:
+      type: object
+      properties:
+        originId: { type: string, format: uuid }
+        keyHash: { type: string }
+        normalizedKey: { type: string }
+    InvalidateRequest:
+      type: object
+      required: [kind, target]
+      properties:
+        originId: { type: string, format: uuid }
+        kind: { type: string, enum: [EXACT, PREFIX, TAG, ORIGIN, TENANT] }
+        target: { type: string }
+        idempotencyKey: { type: string }
+    KeyList:
+      type: object
+      properties:
+        originId: { type: string, format: uuid }
+        keyHashes: { type: array, items: { type: string } }
+    KeyInspection:
+      type: object
+      properties:
+        nodeId: { type: string }
+        keyHash: { type: string }
+        trafficClass: { type: string }
+        pinned: { type: boolean }
+        sizeBytes: { type: integer }
+        ttlSecondsRemaining: { type: integer }
+        originGeneration: { type: integer }
+        entryGeneration: { type: integer }
+        replicas: { type: array, items: { type: string } }
+    NodeView:
+      type: object
+      properties:
+        nodeId: { type: string }
+        address: { type: string }
+        status: { type: string, enum: [HEALTHY, DRAINING, SUSPECT, DOWN] }
+        capacityBytes: { type: integer }
+        usedBytes: { type: integer }
+        hitRatio: { type: number }
+        kafkaLag: { type: integer }
+        lastSeenAt: { type: string, format: date-time }
+    ModelInfo:
+      type: object
+      properties:
+        id: { type: string, readOnly: true }
+        name: { type: string }
+        version: { type: string }
+        artifactUrl: { type: string }
+        checksumSha256: { type: string }
+        featureSchemaVersion: { type: integer }
+        state: { type: string, enum: [SHADOW, SERVING, RETIRED, REJECTED] }
+    Page:
+      type: object
+      properties:
+        items: { type: array, items: {} }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+        nextPage: { type: string, nullable: true }

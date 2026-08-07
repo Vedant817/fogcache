@@ -17,6 +17,11 @@
     <artifactId>fogcache-integration-tests</artifactId>
     <packaging>jar</packaging>
 
+    <!-- No coverage gate here: integration tests verify the whole system. -->
+    <properties>
+        <jacoco.skip>true</jacoco.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>

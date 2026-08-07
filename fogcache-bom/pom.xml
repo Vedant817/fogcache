@@ -15,8 +15,21 @@
     <name>FogCache BOM</name>
     <description>Dependency management for FogCache internal libraries</description>
 
+    <!--
+        Standalone BOM (deliberately not a child of fogcache-parent, mirroring
+        spring-boot-dependencies): dependency versions are defined here as the
+        single source of truth. fogcache-parent keeps matching copies only for
+        versions its own plugin configuration needs (see fogcache-protobuf
+        below); keep them in sync.
+    -->
+    <properties>
+        <fogcache.protobuf.version>4.34.2</fogcache.protobuf.version>
+        <fogcache.okta.version>3.1.0</fogcache.okta.version>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
+            <!-- Internal modules. -->
             <dependency>
                 <groupId>io.fogcache</groupId>
                 <artifactId>fogcache-common</artifactId>
@@ -27,6 +40,51 @@
                 <groupId>io.fogcache</groupId>
                 <artifactId>fogcache-contracts</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <!--
+                Third-party versions NOT managed by the Spring Boot parent BOM.
+                Everything else (spring, reactor, testcontainers, ...) is owned
+                by spring-boot-dependencies and must not be pinned here.
+            -->
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java</artifactId>
+                <version>${fogcache.protobuf.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.google.protobuf</groupId>
+                <artifactId>protobuf-java-util</artifactId>
+                <version>${fogcache.protobuf.version}</version>
+            </dependency>
+
+            <!--
+                protobuf-java-util pulls error_prone_annotations transitively at
+                divergent versions (2.18.0 and 2.41.0); pin so the enforcer's
+                convergence/upper-bound rules pass.
+            -->
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <version>2.41.0</version>
+            </dependency>
+
+            <!--
+                grpc-netty pulls the android variant of guava while other paths
+                pull the jre variant (same 33.5.0); converge on the standard
+                jre build.
+            -->
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>33.5.0-jre</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.okta.spring</groupId>
+                <artifactId>okta-spring-boot-starter</artifactId>
+                <version>${fogcache.okta.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

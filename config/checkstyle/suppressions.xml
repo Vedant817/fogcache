@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC "-//Checkstyle//DTD SuppressionFilter_1_2//EN"
+        "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<!--
+    Central checkstyle suppressions. Generated sources live under target/ and
+    are never scanned; add rules here when a checked source needs an
+    intentional, documented exception.
+-->
+<suppressions>
+</suppressions>

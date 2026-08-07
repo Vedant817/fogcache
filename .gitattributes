@@ -1,0 +1,13 @@
+# Normalize everything to LF (Google Java Format and the protobuf codegen
+# produce LF; line-ending drift breaks `spotless:check` on Windows).
+* text=auto eol=lf
+
+# Batch scripts must keep CRLF so cmd.exe can run them.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary artifacts.
+*.jar binary
+*.png binary
+*.jpg binary
+*.ico binary

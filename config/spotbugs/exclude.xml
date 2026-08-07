@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    Central SpotBugs exclusions. Add entries only for intentional, documented
+    decisions; prefer fixing the bug over suppressing the warning.
+-->
+<FindBugsFilter>
+    <!-- Proto-generated message/builder classes are not authored by hand. -->
+    <Match>
+        <Package name="~io\.fogcache\.contracts.*"/>
+    </Match>
+</FindBugsFilter>

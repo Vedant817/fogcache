@@ -17,6 +17,11 @@
     <artifactId>fogcache-contracts</artifactId>
     <packaging>jar</packaging>
 
+    <!-- No unit tests yet: generated code is exercised by integration tests. -->
+    <properties>
+        <jacoco.skip>true</jacoco.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -28,5 +33,40 @@
             <artifactId>protobuf-java-util</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <extensions>
+            <!-- Detects the OS/arch classifier for the protoc binary. -->
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>${fogcache.os.plugin.version}</version>
+            </extension>
+        </extensions>
+        <plugins>
+            <!--
+                Generates Java classes from proto/fogcache_internal.proto and
+                proto/fogcache_events.proto into target/generated-sources.
+            -->
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>${fogcache.protobuf.plugin.version}</version>
+                <configuration>
+                    <protocArtifact>com.google.protobuf:protoc:${fogcache.protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+                    <protoSourceRoot>src/main/proto</protoSourceRoot>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>protobuf-compile</id>
+                        <goals>
+                            <goal>compile</goal>
+                            <goal>test-compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

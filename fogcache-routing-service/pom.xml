@@ -13,6 +13,9 @@
 	<description>Health-aware routing and cluster membership service for FogCache</description>
 	<properties>
 		<java.version>21</java.version>
+		<!-- No unit tests yet (only context/Testcontainers smoke tests); the
+		     coverage gate is enabled by the milestone that adds them. -->
+		<jacoco.skip>true</jacoco.skip>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -58,7 +61,6 @@
 		<dependency>
 			<groupId>com.okta.spring</groupId>
 			<artifactId>okta-spring-boot-starter</artifactId>
-			<version>3.1.0</version>
 		</dependency>
 
 		<dependency>
@@ -147,30 +149,11 @@
 
 	<build>
 		<plugins>
-		<plugin>
-			<groupId>org.asciidoctor</groupId>
+			<plugin>
+				<!-- Version, execution and restdocs dependency come from the
+				     parent's pluginManagement. -->
+				<groupId>org.asciidoctor</groupId>
 				<artifactId>asciidoctor-maven-plugin</artifactId>
-				<version>2.2.1</version>
-				<executions>
-					<execution>
-						<id>generate-docs</id>
-						<phase>prepare-package</phase>
-						<goals>
-							<goal>process-asciidoc</goal>
-						</goals>
-						<configuration>
-							<backend>html</backend>
-							<doctype>book</doctype>
-						</configuration>
-					</execution>
-				</executions>
-				<dependencies>
-					<dependency>
-						<groupId>org.springframework.restdocs</groupId>
-						<artifactId>spring-restdocs-asciidoctor</artifactId>
-						<version>${spring-restdocs.version}</version>
-					</dependency>
-				</dependencies>
 			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

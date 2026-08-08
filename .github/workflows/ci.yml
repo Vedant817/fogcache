@@ -30,9 +30,10 @@ jobs:
       - name: Lint OpenAPI contracts
         run: npx --yes @redocly/cli lint fogcache-contracts/src/main/resources/openapi/*.yaml
 
-      # Reproducible-build SBOM for the whole reactor.
+      # Reproducible-build SBOM for the whole reactor. Fully-qualified goal:
+      # prefix resolution does not see pluginManagement declarations.
       - name: Generate aggregate SBOM
-        run: ./mvnw -B -ntp cyclonedx:makeAggregateBom -DskipTests
+        run: ./mvnw -B -ntp org.cyclonedx:cyclonedx-maven-plugin:2.9.3:makeAggregateBom -DskipTests
 
       - uses: actions/upload-artifact@v4
         with:

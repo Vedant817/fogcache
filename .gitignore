@@ -18,3 +18,7 @@ Thumbs.db
 
 ### Local environment ###
 .env
+
+### Local certificates ###
+config/certs/
+

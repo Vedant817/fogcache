@@ -46,3 +46,8 @@ services:
     volumes:
       - type: tmpfs
         target: /var/tempo
+
+  keycloak:
+    volumes:
+      - type: tmpfs
+        target: /opt/keycloak/data

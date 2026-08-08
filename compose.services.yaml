@@ -70,11 +70,14 @@ services:
     environment:
       SERVER_PORT: ${EDGE_1_PORT:-8081}
       FOG_NODE_ID: edge-1
+      KEYCLOAK_ISSUER_URI: http://host.docker.internal:${KEYCLOAK_PORT:-8088}/realms/fogcache
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
       OTEL_COLLECTOR_ENDPOINT: http://otel-collector:4318
       TRACE_SAMPLING_PROBABILITY: ${TRACE_SAMPLING_PROBABILITY:-1.0}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${EDGE_1_PORT:-8081}:8081"
     depends_on:
@@ -104,11 +107,14 @@ services:
     environment:
       SERVER_PORT: ${EDGE_2_PORT:-8082}
       FOG_NODE_ID: edge-2
+      KEYCLOAK_ISSUER_URI: http://host.docker.internal:${KEYCLOAK_PORT:-8088}/realms/fogcache
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
       OTEL_COLLECTOR_ENDPOINT: http://otel-collector:4318
       TRACE_SAMPLING_PROBABILITY: ${TRACE_SAMPLING_PROBABILITY:-1.0}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${EDGE_2_PORT:-8082}:8082"
     depends_on:

@@ -172,6 +172,10 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-fogcache_dev_password}
       KC_HTTP_PORT: ${KEYCLOAK_PORT:-8088}
+      # Canonical hostname so the issuer is stable for host AND container clients
+      # (port is derived from KC_HTTP_PORT); strict=false keeps the localhost console working.
+      KC_HOSTNAME: host.docker.internal
+      KC_HOSTNAME_STRICT: "false"
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
       KC_DB: dev-file
@@ -180,6 +184,8 @@ services:
       - keycloak-data:/opt/keycloak/data
     ports:
       - "${KEYCLOAK_PORT:-8088}:8088"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test:
         [

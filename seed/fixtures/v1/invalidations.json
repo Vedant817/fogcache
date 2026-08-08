@@ -1,0 +1,17 @@
+{
+  "fixtureVersion": 1,
+  "invalidations": [
+    {
+      "uid": "invalidation-burst",
+      "objectUids": ["object-hello", "object-config", "object-page"],
+      "reason": "demo-burst",
+      "expectedBehavior": "all listed objects purged from every edge node"
+    },
+    {
+      "uid": "invalidation-unknown",
+      "objectUids": ["object-does-not-exist"],
+      "reason": "negative-test",
+      "expectedBehavior": "must succeed silently (no error) but invalidate nothing"
+    }
+  ]
+}

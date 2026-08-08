@@ -1,0 +1,36 @@
+{
+  "fixtureVersion": 1,
+  "tenants": [
+    {
+      "uid": "tenant-acme",
+      "name": "Acme Corp",
+      "tier": "platform",
+      "quotaUid": "quota-standard",
+      "status": "active",
+      "region": "us-east-1"
+    },
+    {
+      "uid": "tenant-globex",
+      "name": "Globex Industries",
+      "tier": "standard",
+      "quotaUid": "quota-small",
+      "status": "active",
+      "region": "eu-west-1"
+    },
+    {
+      "uid": "tenant-zero-quota",
+      "name": "Boundary Tenant",
+      "tier": "standard",
+      "quotaUid": "quota-zero",
+      "status": "suspended",
+      "note": "Intentionally invalid: zero quota; any ingestion must be rejected."
+    }
+  ],
+  "users": [
+    { "uid": "viewer", "roles": ["viewer"], "tenantUid": null },
+    { "uid": "operator", "roles": ["operator"], "tenantUid": "tenant-acme" },
+    { "uid": "tenant-admin", "roles": ["tenant-admin"], "tenantUid": "tenant-acme" },
+    { "uid": "platform-admin", "roles": ["platform-admin"], "tenantUid": null },
+    { "uid": "auditor", "roles": ["auditor"], "tenantUid": null }
+  ]
+}

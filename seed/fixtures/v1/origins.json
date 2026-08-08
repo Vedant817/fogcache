@@ -1,0 +1,32 @@
+{
+  "fixtureVersion": 1,
+  "origins": [
+    {
+      "uid": "origin-1",
+      "scheme": "http",
+      "host": "localhost",
+      "port": 9099,
+      "healthy": true,
+      "tenantUid": "tenant-acme",
+      "note": "Default healthy origin (served by the local fixture origin in 02.6)."
+    },
+    {
+      "uid": "origin-2",
+      "scheme": "https",
+      "host": "origin.example.test",
+      "port": 443,
+      "healthy": false,
+      "tenantUid": "tenant-globex",
+      "note": "TLS origin; requires trusted local CA from scripts/gen-certs.* in TLS-enabled setups."
+    },
+    {
+      "uid": "origin-down",
+      "scheme": "http",
+      "host": "localhost",
+      "port": 1,
+      "healthy": false,
+      "tenantUid": "tenant-acme",
+      "note": "Intentionally unreachable: negative-test fixture for fallback and error paths."
+    }
+  ]
+}

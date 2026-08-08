@@ -1,0 +1,35 @@
+{
+  "fixtureVersion": 1,
+  "policies": [
+    {
+      "uid": "policy-fast",
+      "description": "Hot-path policy: short TTL, high priority.",
+      "ttlSeconds": 60,
+      "staleWhileRevalidateSeconds": 300,
+      "priority": 10,
+      "cacheableMethods": ["GET", "HEAD"],
+      "queryKeyMode": "include",
+      "status": "active"
+    },
+    {
+      "uid": "policy-stale",
+      "description": "Boundary: zero TTL means immediate expiry (miss every fetch).",
+      "ttlSeconds": 0,
+      "staleWhileRevalidateSeconds": 0,
+      "priority": 5,
+      "cacheableMethods": ["GET"],
+      "queryKeyMode": "exclude",
+      "status": "active"
+    },
+    {
+      "uid": "policy-blocked",
+      "description": "Intentionally invalid: deny-all policy for negative tests.",
+      "ttlSeconds": 60,
+      "staleWhileRevalidateSeconds": 0,
+      "priority": 1,
+      "cacheableMethods": [],
+      "queryKeyMode": "exclude",
+      "status": "blocked"
+    }
+  ]
+}

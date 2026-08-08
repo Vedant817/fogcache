@@ -1,0 +1,29 @@
+{
+  "fixtureVersion": 1,
+  "quotas": [
+    {
+      "uid": "quota-standard",
+      "storageBytes": 1073741824,
+      "objects": 10000,
+      "requestsPerMinute": 6000,
+      "egressBytesPerHour": 10737418240,
+      "description": "Default tenant quota."
+    },
+    {
+      "uid": "quota-small",
+      "storageBytes": 65536,
+      "objects": 100,
+      "requestsPerMinute": 600,
+      "egressBytesPerHour": 1073741824,
+      "description": "Small quota; object-over-quota (128 KiB) exceeds it — boundary fixture."
+    },
+    {
+      "uid": "quota-zero",
+      "storageBytes": 0,
+      "objects": 0,
+      "requestsPerMinute": 0,
+      "egressBytesPerHour": 0,
+      "description": "Intentionally invalid: everything is rejected."
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "fixtureVersion": 1,
+  "models": [
+    {
+      "uid": "model-default",
+      "name": "edge-policy-default",
+      "version": "2026.1",
+      "enabled": true,
+      "config": {
+        "promoteToEdgeThreshold": 3,
+        "evictionWatermark": 0.9,
+        "prefetchWindowSeconds": 30
+      },
+      "note": "Baseline model consumed by fogcache-model-training demos."
+    },
+    {
+      "uid": "model-disabled",
+      "name": "edge-policy-disabled",
+      "version": "2026.1",
+      "enabled": false,
+      "config": {},
+      "note": "Intentionally invalid: disabled model must never be applied."
+    }
+  ]
+}

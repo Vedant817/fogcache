@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "fixtureVersion": 1,
+  "description": "Deterministic seed fixtures for FogCache local development, tests, and demos.",
+  "stableIdentifiers": {
+    "tenants": ["tenant-acme", "tenant-globex", "tenant-zero-quota"],
+    "users": ["viewer", "operator", "tenant-admin", "platform-admin", "auditor"],
+    "origins": ["origin-1", "origin-2", "origin-down"],
+    "objects": ["object-hello", "object-config", "object-page", "object-image", "object-large", "object-empty", "object-invalid-utf8", "object-corrupt", "object-over-quota"],
+    "policies": ["policy-fast", "policy-stale", "policy-blocked"],
+    "quotas": ["quota-standard", "quota-small", "quota-zero"],
+    "nodes": ["edge-1", "edge-2", "node-zero-capacity"],
+    "invalidations": ["invalidation-burst", "invalidation-unknown"],
+    "models": ["model-default", "model-disabled"]
+  },
+  "files": [
+    "tenants.json",
+    "origins.json",
+    "objects.json",
+    "policies.json",
+    "quotas.json",
+    "topology.json",
+    "invalidations.json",
+    "models.json"
+  ],
+  "payloadDir": "payloads",
+  "regeneration": "pwsh seed/tools/regenerate.ps1 (idempotent; verify with seed/tools/verify.ps1)"
+}

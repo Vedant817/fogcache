@@ -1,0 +1,39 @@
+{
+  "fixtureVersion": 1,
+  "nodes": [
+    {
+      "uid": "edge-1",
+      "host": "localhost",
+      "port": 8081,
+      "capacityBytes": 536870912,
+      "region": "us-east-1",
+      "status": "active",
+      "composeService": "edge-1",
+      "note": "Mirrors compose.services.yaml edge-1 (FOG_NODE_ID=edge-1)."
+    },
+    {
+      "uid": "edge-2",
+      "host": "localhost",
+      "port": 8082,
+      "capacityBytes": 536870912,
+      "region": "eu-west-1",
+      "status": "active",
+      "composeService": "edge-2",
+      "note": "Mirrors compose.services.yaml edge-2 (FOG_NODE_ID=edge-2)."
+    },
+    {
+      "uid": "node-zero-capacity",
+      "host": "localhost",
+      "port": 0,
+      "capacityBytes": 0,
+      "region": "ap-south-1",
+      "status": "draining",
+      "note": "Intentionally invalid: zero-capacity node; routing must never assign objects to it."
+    }
+  ],
+  "routing": {
+    "routingServiceUrl": "http://localhost:8080",
+    "defaultPolicyUid": "policy-fast",
+    "strategy": "consistent-hash"
+  }
+}

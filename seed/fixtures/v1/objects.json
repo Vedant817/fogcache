@@ -1,0 +1,101 @@
+{
+  "fixtureVersion": 1,
+  "objects": [
+    {
+      "uid": "object-hello",
+      "payload": "payloads/object-hello.bin",
+      "sizeBytes": 33,
+      "sha256": "29d46da10f066712751a480ae70187382b39a4034d4d3986ab2921803b2c6f9f",
+      "contentType": "text/plain",
+      "version": 1,
+      "tenantUid": "tenant-acme",
+      "cacheable": true
+    },
+    {
+      "uid": "object-config",
+      "payload": "payloads/object-config.bin",
+      "sizeBytes": 66,
+      "sha256": "487598542e1fd45065e7d42d73c6656a015554e2d3135e2311507ae7b89bb09e",
+      "contentType": "application/json",
+      "version": 1,
+      "tenantUid": "tenant-acme",
+      "cacheable": true
+    },
+    {
+      "uid": "object-page",
+      "payload": "payloads/object-page.bin",
+      "sizeBytes": 193,
+      "sha256": "6daf5c90b1a24c096aa810171c552472826a4b82c34fb5f19354c71b120ad711",
+      "contentType": "text/html",
+      "version": 1,
+      "tenantUid": "tenant-acme",
+      "cacheable": true
+    },
+    {
+      "uid": "object-image",
+      "payload": "payloads/object-image.bin",
+      "sizeBytes": 262144,
+      "sha256": "95aee26e885f50bdff72c290077d9d3729a1fefdcaec02da7aaf6aec5036add9",
+      "contentType": "image/png",
+      "version": 1,
+      "tenantUid": "tenant-acme",
+      "cacheable": true,
+      "note": "Synthetic binary payload (deterministic pseudo-content, not a real PNG)."
+    },
+    {
+      "uid": "object-large",
+      "payload": "payloads/object-large.bin",
+      "sizeBytes": 1048576,
+      "sha256": "50f1d8edaf9bbc74cffa16836209627d50074da408315c528caf5d4f2bdb1f54",
+      "contentType": "application/octet-stream",
+      "version": 1,
+      "tenantUid": "tenant-acme",
+      "cacheable": true
+    },
+    {
+      "uid": "object-empty",
+      "payload": "payloads/object-empty.bin",
+      "sizeBytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "contentType": "application/octet-stream",
+      "version": 1,
+      "tenantUid": "tenant-acme",
+      "cacheable": false,
+      "note": "Boundary: zero-byte object."
+    },
+    {
+      "uid": "object-invalid-utf8",
+      "payload": "payloads/object-invalid-utf8.bin",
+      "sizeBytes": 16,
+      "sha256": "6ab2d7748d4bc8e43cd4ec46b4a91242e1509494e7aeef6e27636130be87cd0f",
+      "contentType": "text/plain",
+      "version": 1,
+      "tenantUid": "tenant-acme",
+      "cacheable": true,
+      "note": "Intentionally invalid: contains non-UTF-8 bytes; text parsing must reject."
+    },
+    {
+      "uid": "object-corrupt",
+      "payload": "payloads/object-corrupt.bin",
+      "sizeBytes": 128,
+      "sha256": "cc2e9a5bec41406d944726e194ee6eb5df7e68daa39750e2942637b8000ee309",
+      "declaredSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "contentType": "application/octet-stream",
+      "version": 1,
+      "tenantUid": "tenant-acme",
+      "cacheable": true,
+      "note": "Intentionally invalid: declaredSha256 does not match payload; checksum validation must fail."
+    },
+    {
+      "uid": "object-over-quota",
+      "payload": "payloads/object-over-quota.bin",
+      "sizeBytes": 131072,
+      "sha256": "4d2d36e045be60c9139dd8ed71b22d083bb26efa87177b54a0d63ab94ed34457",
+      "contentType": "application/octet-stream",
+      "version": 1,
+      "tenantUid": "tenant-globex",
+      "cacheable": true,
+      "note": "Boundary/invalid: 128 KiB payload exceeds quota-small (64 KiB); ingestion must be rejected for tenant-globex."
+    }
+  ]
+}

@@ -59,3 +59,81 @@ jobs:
         run: ./mvnw -B -ntp -Psecurity verify -DskipTests
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+
+  integration:
+    name: Integration (ephemeral stack)
+    runs-on: ubuntu-latest
+    needs: build
+    # Unique project name per run/attempt: parallel jobs and retries never
+    # share containers, volumes, or networks (state isolation). On self-hosted
+    # runners that share a host, override ports via .env before bootstrapping.
+    env:
+      COMPOSE_PROJECT_NAME: fogcache-ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Ephemeral stack: disposable (tmpfs) volumes, readiness-gated startup,
+      # and a measured bootstrap so startup time stays visible. The BuildKit
+      # cache mount for ~/.m2 is per-run on fresh runners; the bulk of the time
+      # is the Maven build inside the image, which is never skipped.
+      - name: Bootstrap ephemeral stack
+        id: stack
+        run: |
+          pwsh -NoProfile scripts/fogcache.ps1 bootstrap --disposable 2>&1 | tee ci-bootstrap.log
+          if (-not (Select-String -Path ci-bootstrap.log -Pattern 'all services healthy' -Quiet)) { exit 1 }
+
+      - name: Report startup time
+        run: |
+          echo "## Ephemeral stack startup (build + start + readiness wait)" >> "$GITHUB_STEP_SUMMARY"
+          grep 'stack ready in' ci-bootstrap.log >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Verify seed fixtures (deterministic, checksummed)
+        run: pwsh -NoProfile seed/tools/verify.ps1
+
+      - name: End-to-end smoke (auth, routing, miss/hit, metrics)
+        run: pwsh -NoProfile scripts/fogcache.ps1 smoke
+
+      - name: Traffic scenarios (expected-outcome validation)
+        run: |
+          mkdir -p ci-artifacts
+          python3 scripts/traffic-gen.py --scenario uniform --rate 10 --duration 15 \
+            --metrics-out ci-artifacts/uniform.json --events-out ci-artifacts/uniform.jsonl
+          python3 scripts/traffic-gen.py --scenario zipfian --rate 10 --duration 10 --zipf 1.5 \
+            --metrics-out ci-artifacts/zipfian.json
+          python3 scripts/traffic-gen.py --scenario burst --rate 5 --burst-rate 40 --duration 15 \
+            --metrics-out ci-artifacts/burst.json
+          python3 scripts/traffic-gen.py --scenario sequential --rate 10 --duration 10 \
+            --metrics-out ci-artifacts/sequential.json
+          python3 scripts/traffic-gen.py --scenario regional --rate 10 --duration 10 \
+            --targets http://localhost:8081,http://localhost:8082 \
+            --metrics-out ci-artifacts/regional.json
+          python3 scripts/traffic-gen.py --scenario invalidation --rate 10 --duration 10 \
+            --metrics-out ci-artifacts/invalidation.json
+          python3 scripts/traffic-gen.py --scenario origin-fault --rate 10 --duration 10 \
+            --metrics-out ci-artifacts/origin-fault.json
+
+      # Logs, metrics, and container diagnostics are kept on any outcome so a
+      # failure can be correlated to this exact run.
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p ci-artifacts/diagnostics
+          docker compose ps --format json > ci-artifacts/diagnostics/ps.json 2>&1 || true
+          docker compose logs --no-color > ci-artifacts/diagnostics/compose.log 2>&1 || true
+          docker inspect -f '{{.Name}} {{.State.Health.Status}}' $(docker compose ps -q) \
+            > ci-artifacts/diagnostics/health.txt 2>&1 || true
+          docker inspect -f '{{json .State.Health}}' $(docker compose ps -q) \
+            > ci-artifacts/diagnostics/health.json 2>&1 || true
+
+      - name: Upload diagnostics artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fogcache-ci-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ci-artifacts/
+          if-no-files-found: warn
+
+      # Cleanup runs on success, failure, AND cancellation (always()).
+      - name: Teardown ephemeral stack
+        if: always()
+        run: pwsh -NoProfile scripts/fogcache.ps1 teardown --purge

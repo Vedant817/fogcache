@@ -5,8 +5,8 @@ One-command FogCache local platform workflows: bootstrap, status, smoke, reset, 
 .DESCRIPTION
 Cross-platform helper (PowerShell; `scripts/fogcache.sh` wraps pwsh). Commands:
 
-  fogcache.ps1 bootstrap [--dev]   Start everything, wait for readiness, show endpoints.
-  fogcache.ps1 up [--dev]          Alias for bootstrap.
+  fogcache.ps1 bootstrap [--dev] [--disposable]   Start everything, wait for readiness, show endpoints.
+  fogcache.ps1 up [--dev] [--disposable]          Alias for bootstrap.
   fogcache.ps1 status              Show container + service health; diagnose partial startup.
   fogcache.ps1 smoke               End-to-end smoke: auth, routing, miss/hit, metrics.
   fogcache.ps1 reset [--cache|--data|--full] [--yes]   Reset state (see below).
@@ -32,6 +32,7 @@ param(
     [ValidateSet('bootstrap', 'up', 'status', 'smoke', 'reset', 'teardown', 'down')]
     [string]$Command = 'bootstrap',
     [switch]$Dev,
+    [switch]$Disposable,
     [switch]$Cache,
     [switch]$Data,
     [switch]$Full,
@@ -45,6 +46,7 @@ Set-Location $root
 
 $composeBase = @('-f', 'compose.yaml', '-f', 'compose.services.yaml')
 if ($Dev) { $composeBase += @('-f', 'compose.dev.yaml') }
+if ($Disposable) { $composeBase += @('-f', 'compose.disposable.yaml') }
 
 $services = @{
     'routing'   = 8080
@@ -90,15 +92,34 @@ function Test-Prerequisites {
 
 function Test-Ports {
     # Docker Desktop publishes container ports through wslrelay/com.docker.backend/vpnkit
-    # proxies - those listeners are the stack itself, not conflicts.
+    # proxies - those listeners are the stack itself, not conflicts. On Linux/macOS the
+    # same check runs against `ss` and ignores docker-proxy listeners.
     $dockerOwned = @('wslrelay', 'com.docker.backend', 'vpnkit', 'docker-proxy', 'com.docker.dev-envs')
     $conflicts = @()
     foreach ($entry in $services.GetEnumerator()) {
-        $conn = Get-NetTCPConnection -LocalPort $entry.Value -State Listen -ErrorAction SilentlyContinue
-        if ($conn) {
-            $proc = Get-Process -Id $conn[0].OwningProcess -ErrorAction SilentlyContinue
-            if ($proc -and $dockerOwned -contains $proc.ProcessName) { continue }
-            $conflicts += "port $($entry.Value) ($($entry.Key)) is held by $($proc.ProcessName) (PID $($conn[0].OwningProcess))"
+        $heldBy = $null
+        if ($env:OS -eq 'Windows_NT') {
+            $conn = Get-NetTCPConnection -LocalPort $entry.Value -State Listen -ErrorAction SilentlyContinue
+            if ($conn) {
+                $proc = Get-Process -Id $conn[0].OwningProcess -ErrorAction SilentlyContinue
+                $heldBy = "$($proc.ProcessName) (PID $($conn[0].OwningProcess))"
+            }
+        } else {
+            $listener = & ss -ltnp "sport = :$($entry.Value)" 2>$null
+            if ($LASTEXITCODE -eq 0 -and $listener) {
+                $match = $listener | Select-String 'users:\(\("([^"]+)"'
+                if ($match) {
+                    $procName = $match.Matches[0].Groups[1].Value
+                    $pidMatch = [regex]::Match($listener, 'pid=(\d+)')
+                    $heldBy = "$procName (PID $($pidMatch.Groups[1].Value))"
+                }
+            }
+        }
+        if ($heldBy) {
+            $name = ($heldBy -split ' \(')[0]
+            if ($dockerOwned -notcontains $name) {
+                $conflicts += "port $($entry.Value) ($($entry.Key)) is held by $heldBy"
+            }
         }
     }
     foreach ($c in $conflicts) {
@@ -148,8 +169,11 @@ function Show-Endpoints {
 function Invoke-Bootstrap {
     Test-Prerequisites
     Test-Ports
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
     Invoke-Compose -ComposeArgs @('up', '-d', '--build', '--remove-orphans')
     Wait-ForStack
+    $sw.Stop()
+    Write-Host ("  stack ready in {0:N1}s (build + start + readiness wait)" -f $sw.Elapsed.TotalSeconds)
     Show-Endpoints
     Write-Host ''
     Write-Host 'Smoke test:  pwsh scripts/fogcache.ps1 smoke'
@@ -279,7 +303,9 @@ function Invoke-Reset {
     if ($Cache) {
         if (-not (Confirm-Destructive 'Reset --cache: flush Redis and restart edge nodes (no data loss).')) { Write-Host 'Aborted.'; return }
         Write-Host 'Flushing Redis and restarting edge nodes...'
-        & docker exec fogcache-redis redis-cli FLUSHALL | Out-Null
+        $redisId = & docker compose @composeBase ps -q redis
+        if (-not $redisId) { throw 'redis container not running' }
+        & docker exec $redisId redis-cli FLUSHALL | Out-Null
         Invoke-Compose -ComposeArgs @('restart', 'edge-1', 'edge-2')
         Write-Host 'Cache reset done. Run smoke to confirm.'
     } elseif ($Data) {

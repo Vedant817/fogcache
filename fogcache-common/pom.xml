@@ -28,6 +28,24 @@
             <artifactId>jakarta.validation-api</artifactId>
         </dependency>
 
+        <!-- OpenTelemetry logging: bridges Logback output into the OTel log
+             pipeline that Spring Boot's spring-boot-opentelemetry provides. -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+        </dependency>
+
+        <!-- Needed at runtime by the SDK's extended log record pipeline. -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api-incubator</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-logback-appender-1.0</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

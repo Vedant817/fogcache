@@ -1,1 +1,2 @@
 io.fogcache.common.autoconfigure.FogcacheCommonAutoConfiguration
+io.fogcache.common.autoconfigure.FogcacheObservabilityAutoConfiguration

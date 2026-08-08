@@ -25,6 +25,8 @@
     <properties>
         <fogcache.protobuf.version>4.34.2</fogcache.protobuf.version>
         <fogcache.okta.version>3.1.0</fogcache.okta.version>
+        <fogcache.otel.instrumentation.version>2.30.0-alpha</fogcache.otel.instrumentation.version>
+        <fogcache.otel.sdk.version>1.62.0-alpha</fogcache.otel.sdk.version>
     </properties>
 
     <dependencyManagement>
@@ -85,6 +87,43 @@
                 <groupId>com.okta.spring</groupId>
                 <artifactId>okta-spring-boot-starter</artifactId>
                 <version>${fogcache.okta.version}</version>
+            </dependency>
+
+            <!--
+                OpenTelemetry Logback appender: Spring Boot configures the OTel
+                log export pipeline but provides no bridge from Logback, so the
+                appender must be added explicitly (see
+                https://docs.spring.io/spring-boot/reference/actuator/loggers.html#actuator.loggers.opentelemetry).
+                The OTel SDK/API versions it pulls transitively are managed by
+                the Spring Boot BOM; only this artifact needs a pin.
+            -->
+            <dependency>
+                <groupId>io.opentelemetry.instrumentation</groupId>
+                <artifactId>opentelemetry-logback-appender-1.0</artifactId>
+                <version>${fogcache.otel.instrumentation.version}</version>
+            </dependency>
+
+            <!--
+                opentelemetry-semconv is not managed by the Spring Boot BOM:
+                the logback appender pulls 1.43.0 while micrometer-tracing
+                pulls 1.41.1. Pin so the enforcer's convergence rules pass.
+            -->
+            <dependency>
+                <groupId>io.opentelemetry.semconv</groupId>
+                <artifactId>opentelemetry-semconv</artifactId>
+                <version>1.43.0</version>
+            </dependency>
+
+            <!--
+                The OTel SDK's log record pipeline references incubator API
+                classes at runtime; Spring Boot manages neither the SDK
+                incubator artifacts nor their versions. Pin to the SDK
+                version Boot 4.1.0 manages (1.62.0).
+            -->
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-api-incubator</artifactId>
+                <version>${fogcache.otel.sdk.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

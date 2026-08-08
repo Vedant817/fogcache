@@ -29,6 +29,10 @@ volumes:
   redis-data:
   kafka-data:
   minio-data:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+  tempo-data:
 
 services:
   postgres:
@@ -158,3 +162,113 @@ services:
     logging: *default-logging
     networks: [fogcache-net]
     restart: "no"
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.121.0
+    container_name: fogcache-otel-collector
+    command: ["--config=/etc/otel/config.yml"]
+    volumes:
+      - ./observability/otel-collector/otel-collector-config.yml:/etc/otel/config.yml:ro
+    ports:
+      - "${OTLP_GRPC_PORT:-4317}:4317"
+      - "${OTLP_HTTP_PORT:-4318}:4318"
+    depends_on:
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
+    deploy:
+      <<: *default-resources
+    logging: *default-logging
+    networks: [fogcache-net]
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.4.1
+    container_name: fogcache-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=24h
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    depends_on:
+      otel-collector:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9090/-/healthy"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      <<: *default-resources
+    logging: *default-logging
+    networks: [fogcache-net]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.6.1
+    container_name: fogcache-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      loki:
+        condition: service_started
+      prometheus:
+        condition: service_healthy
+      tempo:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    deploy:
+      <<: *default-resources
+    logging: *default-logging
+    networks: [fogcache-net]
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.7.1
+    container_name: fogcache-loki
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    deploy:
+      <<: *default-resources
+    logging: *default-logging
+    networks: [fogcache-net]
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.8.1
+    container_name: fogcache-tempo
+    command: ["-config.file=/etc/tempo/tempo-config.yml"]
+    volumes:
+      - ./observability/tempo/tempo-config.yml:/etc/tempo/tempo-config.yml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "${TEMPO_PORT:-3200}:3200"
+    deploy:
+      <<: *default-resources
+    logging: *default-logging
+    networks: [fogcache-net]
+    restart: unless-stopped

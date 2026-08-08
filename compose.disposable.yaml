@@ -26,3 +26,23 @@ services:
     volumes:
       - type: tmpfs
         target: /data
+
+  prometheus:
+    volumes:
+      - type: tmpfs
+        target: /prometheus
+
+  grafana:
+    volumes:
+      - type: tmpfs
+        target: /var/lib/grafana
+
+  loki:
+    volumes:
+      - type: tmpfs
+        target: /loki
+
+  tempo:
+    volumes:
+      - type: tmpfs
+        target: /var/tempo

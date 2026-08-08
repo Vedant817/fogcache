@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: fogcache
+    orgId: 1
+    folder: FogCache
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards/fogcache

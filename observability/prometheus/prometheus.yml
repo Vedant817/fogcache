@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8889"]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Services started on the developer machine (./mvnw spring-boot:run or IDE)
+  # expose /actuator/prometheus on localhost. host.docker.internal resolves on
+  # Docker Desktop for Windows/macOS.
+  - job_name: fogcache-services
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8080"]

@@ -9,8 +9,14 @@ Milestone **00 — Product definition & architecture** deliverables. Master spec
 | Doc | Covers |
 |---|---|
 | `../CONTRIBUTING.md` | Build, quality gates, dependency hygiene, commit conventions, CI |
+| `onboarding.md` | First-run tutorial: prereqs, miss→hit, workflows, telemetry, troubleshooting, OS differences (VED-78) |
 | `development.md` | Local setup, first build, running services, troubleshooting |
 | `architecture/module-ownership.md` | Build-time module graph, ownership matrix, dependency rules (VED-36) |
+
+The commands documented in `onboarding.md` and `development.md` are validated
+on every CI run (ephemeral-stack bootstrap, smoke, traffic scenarios) and by
+`docs/tools/check-docs.ps1`, which fails the build on stale commands or
+broken relative links.
 
 ## Product
 

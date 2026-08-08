@@ -1,5 +1,11 @@
 # Local development
 
+> New to the repo? Start with [`docs/onboarding.md`](onboarding.md) — a
+> first-run tutorial covering prerequisites, the one-command stack, your first
+> cache miss → hit, test users, telemetry inspection, certificate trust, and
+> platform differences. This page is the reference: build, modules, stack,
+> and commands.
+
 ## Prerequisites
 
 | Tool | Version | Notes |
@@ -85,8 +91,15 @@ Each service exposes:
 
 - `http://localhost:<port>/actuator/health` — liveness/readiness probes
 - `http://localhost:<port>/actuator/info` — git commit metadata
-- `/actuator/prometheus` — metrics (port 8080 by default until milestone 02
-  assigns per-service ports)
+- `/actuator/prometheus` — metrics
+
+Service ports: routing `8080`, edge-1 `8081`, edge-2 `8082`, content `8083`,
+control `8084`, analytics `8085` (override any in `.env`). Web UIs: Keycloak
+`8088` (realm `fogcache`), Grafana `3000`, Prometheus `9090`, MinIO console
+`9001`. OIDC test users (`viewer`, `operator`, `tenant-admin`,
+`platform-admin`, `auditor`) share the password `fogcache_dev_password`.
+Telemetry flows services → otel-collector → Loki/Tempo/Prometheus, browsable
+in Grafana.
 
 ## Common workflows
 

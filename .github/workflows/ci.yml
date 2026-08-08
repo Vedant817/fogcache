@@ -30,6 +30,11 @@ jobs:
       - name: Lint OpenAPI contracts
         run: npx --yes @redocly/cli lint fogcache-contracts/src/main/resources/openapi/*.yaml
 
+      # Documentation smoke test: every documented fogcache command, traffic
+      # scenario, and relative markdown link must resolve (docs/tools/check-docs.ps1).
+      - name: Check docs references
+        run: pwsh -NoProfile docs/tools/check-docs.ps1
+
       # Reproducible-build SBOM for the whole reactor. Fully-qualified goal:
       # prefix resolution does not see pluginManagement declarations.
       - name: Generate aggregate SBOM

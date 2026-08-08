@@ -95,6 +95,33 @@ Each service exposes:
 npx @redocly/cli lint fogcache-contracts/src/main/resources/openapi/*.yaml
 ```
 
+## Traffic generator
+
+`scripts/traffic-gen.py` (zero-dependency Python 3.11+) drives deterministic,
+seed-reproducible request scenarios against the demo edge and validates each
+response against an expected outcome (status, cache status, checksum):
+
+```bash
+python scripts/traffic-gen.py --scenario uniform --rate 10 --duration 15
+python scripts/traffic-gen.py --scenario zipfian --seed 42 --zipf 1.5
+python scripts/traffic-gen.py --scenario burst --rate 5 --burst-rate 40 --duration 20
+python scripts/traffic-gen.py --scenario regional --targets http://localhost:8081,http://localhost:8082
+python scripts/traffic-gen.py --scenario invalidation --rate 10 --duration 12
+python scripts/traffic-gen.py --scenario origin-fault --rate 10 --duration 10
+python scripts/traffic-gen.py --dry-run          # print the plan, send nothing
+```
+
+Scenarios: `uniform`, `zipfian` (exponent via `--zipf`), `burst` (high/low
+periods via `--burst-high/--burst-low`), `sequential`, `regional` (round-robin
+across `--targets`), `invalidation` (evict + re-fetch, asserts miss),
+`origin-fault` (unknown uids → 404, corrupted fixture → 200 with failing
+checksum). The request stream is a pure function of `--seed`; only latency
+metrics vary run to run. `--corpus demo` (default) targets the uids the demo
+edge serves; `--corpus all` expects a full origin that serves every seed
+fixture. `--metrics-out`/`--events-out` write JSON/JSONL artifacts. Exit code
+is 0 only if every event passed. Tokens are auto-fetched from Keycloak for
+localhost targets; non-local targets require `--token`.
+
 ## Troubleshooting
 
 - **Tests fail with "connection refused" / Testcontainers errors** — Docker

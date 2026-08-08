@@ -36,7 +36,7 @@ public class DemoCacheController {
                   "object-config",
                   "application/json",
                   "{\"region\":\"us-east-1\",\"tier\":\"standard\",\"ttl\":60,"
-                      + "\"cacheable\":true}\n"),
+                      + "\"cacheable\":true}"),
           "object-page",
               textObject(
                   "object-page",
@@ -45,7 +45,7 @@ public class DemoCacheController {
                       + "<html><head><title>FogCache demo page</title></head>\n"
                       + "<body><h1>FogCache deterministic fixture</h1>\n"
                       + "<p>This page is generated deterministically for local demos.</p>"
-                      + "</body></html>\n"),
+                      + "</body></html>"),
           "object-image", binaryObject("object-image", "image/png", 256 * 1024));
 
   private final ConcurrentHashMap<String, DemoObject> cache = new ConcurrentHashMap<>();

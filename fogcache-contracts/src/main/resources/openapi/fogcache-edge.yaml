@@ -8,6 +8,7 @@ info:
     conventions per docs/architecture/contract-conventions.md.
 servers:
   - url: https://edge.fogcache.example
+security: []
 tags:
   - name: cache
     description: Cached content access
@@ -89,6 +90,17 @@ paths:
       tags: [cache]
       operationId: headObject
       summary: Fetch headers only (shares the GET representation)
+      parameters:
+        - name: originAlias
+          in: path
+          required: true
+          schema: { type: string }
+          description: Tenant origin alias defined in control plane
+        - name: path
+          in: path
+          required: true
+          schema: { type: string }
+          description: Object path (all remaining segments)
       responses:
         '200':
           description: Same headers as GET, empty body

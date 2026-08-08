@@ -26,6 +26,7 @@ paths:
     post:
       tags: [tenants]
       operationId: createTenant
+      summary: Create a tenant (platform-admin)
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -38,11 +39,13 @@ paths:
     get:
       tags: [tenants]
       operationId: listTenants
+      summary: List tenants with paging
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
       responses:
         '200':
+          description: Paged tenant list
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Page' }
@@ -50,9 +53,11 @@ paths:
     get:
       tags: [tenants]
       operationId: getTenant
+      summary: Fetch a single tenant
       parameters: [{ $ref: '#/components/parameters/TenantId' }]
       responses:
         '200':
+          description: Tenant detail
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Tenant' }
@@ -60,6 +65,7 @@ paths:
     patch:
       tags: [tenants]
       operationId: updateTenant
+      summary: Update tenant settings
       parameters: [{ $ref: '#/components/parameters/TenantId' }]
       requestBody:
         required: true
@@ -71,13 +77,15 @@ paths:
     delete:
       tags: [tenants]
       operationId: deleteTenant
+      summary: Delete tenant and purge all origins/keys
       parameters: [{ $ref: '#/components/parameters/TenantId' }]
       responses:
-        '204': { description: Deleted (all origins/keys purged, audited) }
+        '204': { description: "Deleted (all origins/keys purged, audited)" }
   /v1/admin/tenants/{tenantId}/origins:
     post:
       tags: [origins]
       operationId: createOrigin
+      summary: Register an origin for a tenant
       parameters: [{ $ref: '#/components/parameters/TenantId' }]
       requestBody:
         required: true
@@ -86,16 +94,18 @@ paths:
             schema: { $ref: '#/components/schemas/Origin' }
       responses:
         '201': { description: Origin created }
-        '400': { description: Origin host not on allowlist (SSRF control, T-03) }
+        '400': { description: "Origin host not on allowlist (SSRF control, T-03)" }
     get:
       tags: [origins]
       operationId: listOrigins
+      summary: List origins for a tenant
       parameters:
         - { $ref: '#/components/parameters/TenantId' }
         - { $ref: '#/components/parameters/Page' }
         - { $ref: '#/components/parameters/PageSize' }
       responses:
         '200':
+          description: Paged origin list
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Page' }
@@ -103,17 +113,20 @@ paths:
     get:
       tags: [origins]
       operationId: getOrigin
+      summary: Fetch a single origin
       parameters:
         - { $ref: '#/components/parameters/TenantId' }
         - { $ref: '#/components/parameters/OriginId' }
       responses:
         '200':
+          description: Origin detail
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Origin' }
     patch:
       tags: [origins]
       operationId: updateOrigin
+      summary: Update origin configuration
       parameters:
         - { $ref: '#/components/parameters/TenantId' }
         - { $ref: '#/components/parameters/OriginId' }
@@ -127,6 +140,7 @@ paths:
     delete:
       tags: [origins]
       operationId: deleteOrigin
+      summary: Delete origin and invalidate its keys
       parameters:
         - { $ref: '#/components/parameters/TenantId' }
         - { $ref: '#/components/parameters/OriginId' }
@@ -136,18 +150,21 @@ paths:
     get:
       tags: [policies]
       operationId: listPolicies
+      summary: List cache policies for a tenant
       parameters:
         - { $ref: '#/components/parameters/TenantId' }
         - { $ref: '#/components/parameters/Page' }
         - { $ref: '#/components/parameters/PageSize' }
       responses:
         '200':
+          description: Paged policy list
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Page' }
     post:
       tags: [policies]
       operationId: createPolicy
+      summary: Create a cache policy
       parameters: [{ $ref: '#/components/parameters/TenantId' }]
       requestBody:
         required: true
@@ -160,15 +177,18 @@ paths:
     get:
       tags: [quotas]
       operationId: getQuota
+      summary: Fetch tenant quota
       parameters: [{ $ref: '#/components/parameters/TenantId' }]
       responses:
         '200':
+          description: Current quota
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Quota' }
     put:
       tags: [quotas]
       operationId: setQuota
+      summary: Set tenant quota
       parameters: [{ $ref: '#/components/parameters/TenantId' }]
       requestBody:
         required: true
@@ -239,6 +259,7 @@ paths:
     post:
       tags: [keys]
       operationId: unpinKeys
+      summary: Unpin keys (allow eviction)
       parameters: [{ $ref: '#/components/parameters/TenantId' }]
       requestBody:
         required: true
@@ -251,6 +272,7 @@ paths:
     post:
       tags: [keys]
       operationId: evictKeys
+      summary: Evict keys locally
       parameters: [{ $ref: '#/components/parameters/TenantId' }]
       requestBody:
         required: true
@@ -263,8 +285,10 @@ paths:
     get:
       tags: [nodes]
       operationId: listNodes
+      summary: List node fleet state
       responses:
         '200':
+          description: Fleet state
           content:
             application/json:
               schema:
@@ -274,6 +298,7 @@ paths:
     get:
       tags: [analytics]
       operationId: listHotKeys
+      summary: List hot keys for a tenant
       parameters:
         - name: tenantId
           in: query
@@ -281,12 +306,12 @@ paths:
           schema: { type: string, format: uuid }
         - name: minClass
           in: query
-          schema: { type: string, enum: [HOT, WARM] }
-          default: HOT
+          schema: { type: string, enum: [HOT, WARM], default: HOT }
         - { $ref: '#/components/parameters/Page' }
         - { $ref: '#/components/parameters/PageSize' }
       responses:
         '200':
+          description: Paged hot key list
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Page' }
@@ -294,11 +319,13 @@ paths:
     get:
       tags: [analytics]
       operationId: listPrefetchDecisions
+      summary: List recent prefetch decisions
       parameters:
         - { $ref: '#/components/parameters/Page' }
         - { $ref: '#/components/parameters/PageSize' }
       responses:
         '200':
+          description: Paged prefetch decisions
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Page' }
@@ -306,8 +333,10 @@ paths:
     get:
       tags: [models]
       operationId: listModels
+      summary: List registered models
       responses:
         '200':
+          description: Registered models
           content:
             application/json:
               schema:
@@ -341,8 +370,10 @@ paths:
     get:
       tags: [models]
       operationId: listFlags
+      summary: List feature flags
       responses:
         '200':
+          description: Current flag values
           content:
             application/json:
               schema:
@@ -380,6 +411,7 @@ paths:
         - { $ref: '#/components/parameters/PageSize' }
       responses:
         '200':
+          description: Paged audit records
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Page' }

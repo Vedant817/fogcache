@@ -130,6 +130,15 @@ function Test-Ports {
     }
 }
 
+function Get-ResponseText {
+    # PowerShell 7 returns .Content as a byte[] when the response Content-Type
+    # is not text/* (e.g. application/vnd.spring-boot.actuator.v3+json), which
+    # silently breaks string operations and ConvertFrom-Json.
+    param($Response)
+    if ($Response.Content -is [byte[]]) { return [Text.Encoding]::UTF8.GetString($Response.Content) }
+    return [string]$Response.Content
+}
+
 function Wait-ForStack {
     Write-Host '== Waiting for readiness (up to 300s) =='
     $deadline = (Get-Date).AddSeconds(300)
@@ -139,7 +148,7 @@ function Wait-ForStack {
         foreach ($entry in $services.GetEnumerator()) {
             try {
                 $resp = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 -Uri "http://localhost:$($entry.Value)/actuator/health"
-                $json = $resp.Content | ConvertFrom-Json
+                $json = Get-ResponseText $resp | ConvertFrom-Json
                 if ($json.status -ne 'UP') {
                     $ready = $false
                     $lastProbe[$entry.Key] = "actuator status=$($json.status)"
@@ -288,8 +297,9 @@ function Invoke-Smoke {
     $checks += 'metrics: prometheus counters present'
     try {
         $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 "http://localhost:8081/actuator/prometheus"
-        if ($r.Content -notmatch 'fogcache_demo_cache_hits_total') { throw 'hits counter missing' }
-        if ($r.Content -notmatch 'fogcache_demo_cache_misses_total') { throw 'misses counter missing' }
+        $metrics = Get-ResponseText $r
+        if ($metrics -notmatch 'fogcache_demo_cache_hits_total') { throw 'hits counter missing' }
+        if ($metrics -notmatch 'fogcache_demo_cache_misses_total') { throw 'misses counter missing' }
         Write-Host "  PASS $($checks[-1])"
     } catch {
         $failures += $checks[-1]; Write-Host "  FAIL $($checks[-1]): $_"

@@ -44,8 +44,10 @@ MinIO starts with two empty buckets (`fogcache-objects`, `fogcache-policies`)
 created by the `minio-init` one-shot service, which waits on the MinIO health
 check. Kafka is a single KRaft node (no ZooKeeper) and auto-creates topics.
 
-Disposable mode swaps the named volumes for tmpfs, so nothing survives a
-restart and teardown is instant:
+Disposable mode swaps the named volumes for anonymous volumes, so nothing
+survives a teardown and every run starts from a clean slate (anonymous volumes
+are initialized from the image directory, preserving image ownership for
+non-root users like Kafka's `appuser` and Prometheus' `nobody`):
 
 ```bash
 docker compose -f compose.yaml -f compose.disposable.yaml up -d

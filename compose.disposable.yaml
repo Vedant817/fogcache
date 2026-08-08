@@ -1,53 +1,61 @@
-# Disposable mode override: swap named volumes for tmpfs so no data survives
-# a container restart and teardown is instant.
+# Disposable mode override: swap named volumes for anonymous volumes so no
+# data survives a teardown and every run starts from a clean slate.
 #
 #   docker compose -f compose.yaml -f compose.disposable.yaml up -d
 #
-# NOTE: compose override files merge services by name and replace volume mounts
+# NOTE: anonymous volumes are chosen over tmpfs on purpose. tmpfs mounts
+# cannot carry uid/gid/mode through `docker compose` (the plugin drops the
+# options on every version we tested), so non-root container users (kafka
+# uid 1000, prometheus nobody) could not write their data dirs and crashed
+# at startup. Anonymous volumes are initialized from the image directory,
+# preserving the image's ownership, and are removed by teardown --purge
+# (`docker compose down -v`), so isolation is preserved.
+#
+# Compose override files merge services by name and replace volume mounts
 # that share the same container path.
 
 services:
   postgres:
     volumes:
-      - type: tmpfs
+      - type: volume
         target: /var/lib/postgresql/data
 
   redis:
     volumes:
-      - type: tmpfs
+      - type: volume
         target: /data
 
   kafka:
     volumes:
-      - type: tmpfs
+      - type: volume
         target: /var/lib/kafka/data
 
   minio:
     volumes:
-      - type: tmpfs
+      - type: volume
         target: /data
 
   prometheus:
     volumes:
-      - type: tmpfs
+      - type: volume
         target: /prometheus
 
   grafana:
     volumes:
-      - type: tmpfs
+      - type: volume
         target: /var/lib/grafana
 
   loki:
     volumes:
-      - type: tmpfs
+      - type: volume
         target: /loki
 
   tempo:
     volumes:
-      - type: tmpfs
+      - type: volume
         target: /var/tempo
 
   keycloak:
     volumes:
-      - type: tmpfs
+      - type: volume
         target: /opt/keycloak/data

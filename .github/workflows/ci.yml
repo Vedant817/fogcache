@@ -73,15 +73,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Ephemeral stack: disposable (tmpfs) volumes, readiness-gated startup,
-      # and a measured bootstrap so startup time stays visible. The BuildKit
-      # cache mount for ~/.m2 is per-run on fresh runners; the bulk of the time
-      # is the Maven build inside the image, which is never skipped.
+      # Ephemeral stack: anonymous-volume (disposable) storage, readiness-gated
+      # startup, and a measured bootstrap so startup time stays visible. The
+      # BuildKit cache mount for ~/.m2 is per-run on fresh runners; the bulk of
+      # the time is the Maven build inside the image, which is never skipped.
       - name: Bootstrap ephemeral stack
         id: stack
         run: |
           pwsh -NoProfile scripts/fogcache.ps1 bootstrap --disposable 2>&1 | tee ci-bootstrap.log
-          if (-not (Select-String -Path ci-bootstrap.log -Pattern 'all services healthy' -Quiet)) { exit 1 }
+          if ! grep -q 'all services healthy' ci-bootstrap.log; then
+            echo "bootstrap log missing readiness marker" >&2
+            exit 1
+          fi
 
       - name: Report startup time
         run: |

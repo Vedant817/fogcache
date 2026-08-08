@@ -1,0 +1,36 @@
+# Development mode override: run the platform stack with locally built jars.
+#
+# Prerequisite: build the service jars first, e.g.
+#
+#   ./mvnw -B -ntp -pl fogcache-routing-service,fogcache-edge-service,fogcache-content-service,fogcache-control-service,fogcache-analytics-service -am package -DskipTests
+#
+#   docker compose -f compose.yaml -f compose.services.yaml -f compose.dev.yaml up -d
+#
+# Each service's local jar is bind-mounted over the image jar, so rebuilds on
+# the host take effect after `docker compose restart <service>` — no image
+# rebuild required.
+
+services:
+  routing:
+    volumes:
+      - ./fogcache-routing-service/target/fogcache-routing-service-0.1.0-SNAPSHOT.jar:/app/app.jar:ro
+
+  edge-1:
+    volumes:
+      - ./fogcache-edge-service/target/fogcache-edge-service-0.1.0-SNAPSHOT.jar:/app/app.jar:ro
+
+  edge-2:
+    volumes:
+      - ./fogcache-edge-service/target/fogcache-edge-service-0.1.0-SNAPSHOT.jar:/app/app.jar:ro
+
+  content:
+    volumes:
+      - ./fogcache-content-service/target/fogcache-content-service-0.1.0-SNAPSHOT.jar:/app/app.jar:ro
+
+  control:
+    volumes:
+      - ./fogcache-control-service/target/fogcache-control-service-0.1.0-SNAPSHOT.jar:/app/app.jar:ro
+
+  analytics:
+    volumes:
+      - ./fogcache-analytics-service/target/fogcache-analytics-service-0.1.0-SNAPSHOT.jar:/app/app.jar:ro

@@ -1,0 +1,17 @@
+.git
+.idea
+.vscode
+**/target
+**/.next
+**/node_modules
+**/.venv
+**/models
+**/notebooks
+*.log
+.env
+docs
+observability
+compose*.yaml
+scripts
+seed
+tools

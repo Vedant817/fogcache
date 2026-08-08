@@ -1,0 +1,238 @@
+# FogCache service containers for local multi-node execution.
+#
+# Use together with the platform stack:
+#
+#   docker compose -f compose.yaml -f compose.services.yaml up -d --build
+#   docker compose -f compose.yaml -f compose.services.yaml -f compose.dev.yaml up -d   # dev mode
+#
+# Dev mode (compose.dev.yaml) bind-mounts locally built jars over the image jars,
+# so `mvnw package` + `up` is a fast edit-build-run loop without rebuilding images.
+#
+# Every service:
+#   - waits on infrastructure health checks (no fixed delays),
+#   - exposes its own health check (/actuator/health),
+#   - exports telemetry to the shared otel-collector,
+#   - runs with spring.docker.compose disabled (the stack is managed here).
+
+x-service-logging: &service-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+x-service-resources: &service-resources
+  resources:
+    limits:
+      cpus: "0.5"
+      memory: 768m
+
+services:
+  routing:
+    build:
+      context: .
+      args:
+        MODULE: fogcache-routing-service
+    image: fogcache-routing-service:local
+    container_name: fogcache-routing
+    environment:
+      SERVER_PORT: ${ROUTING_PORT:-8080}
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      OTEL_COLLECTOR_ENDPOINT: http://otel-collector:4318
+      TRACE_SAMPLING_PROBABILITY: ${TRACE_SAMPLING_PROBABILITY:-1.0}
+    ports:
+      - "${ROUTING_PORT:-8080}:8080"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      otel-collector: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:${ROUTING_PORT:-8080}/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    deploy:
+      <<: *service-resources
+    logging: *service-logging
+    networks: [fogcache-net]
+    restart: unless-stopped
+
+  edge-1:
+    build:
+      context: .
+      args:
+        MODULE: fogcache-edge-service
+    image: fogcache-edge-service:local
+    container_name: fogcache-edge-1
+    environment:
+      SERVER_PORT: ${EDGE_1_PORT:-8081}
+      FOG_NODE_ID: edge-1
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      OTEL_COLLECTOR_ENDPOINT: http://otel-collector:4318
+      TRACE_SAMPLING_PROBABILITY: ${TRACE_SAMPLING_PROBABILITY:-1.0}
+    ports:
+      - "${EDGE_1_PORT:-8081}:8081"
+    depends_on:
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      otel-collector: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:${EDGE_1_PORT:-8081}/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    deploy:
+      <<: *service-resources
+    logging: *service-logging
+    networks: [fogcache-net]
+    restart: unless-stopped
+
+  edge-2:
+    build:
+      context: .
+      args:
+        MODULE: fogcache-edge-service
+    image: fogcache-edge-service:local
+    container_name: fogcache-edge-2
+    environment:
+      SERVER_PORT: ${EDGE_2_PORT:-8082}
+      FOG_NODE_ID: edge-2
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      OTEL_COLLECTOR_ENDPOINT: http://otel-collector:4318
+      TRACE_SAMPLING_PROBABILITY: ${TRACE_SAMPLING_PROBABILITY:-1.0}
+    ports:
+      - "${EDGE_2_PORT:-8082}:8082"
+    depends_on:
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      otel-collector: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:${EDGE_2_PORT:-8082}/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    deploy:
+      <<: *service-resources
+    logging: *service-logging
+    networks: [fogcache-net]
+    restart: unless-stopped
+
+  content:
+    build:
+      context: .
+      args:
+        MODULE: fogcache-content-service
+    image: fogcache-content-service:local
+    container_name: fogcache-content
+    environment:
+      SERVER_PORT: ${CONTENT_PORT:-8083}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/${POSTGRES_DB:-fogcache}
+      SPRING_R2DBC_USERNAME: ${POSTGRES_USER:-fogcache}
+      SPRING_R2DBC_PASSWORD: ${POSTGRES_PASSWORD:-fogcache_dev_password}
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      OTEL_COLLECTOR_ENDPOINT: http://otel-collector:4318
+      TRACE_SAMPLING_PROBABILITY: ${TRACE_SAMPLING_PROBABILITY:-1.0}
+    ports:
+      - "${CONTENT_PORT:-8083}:8083"
+    depends_on:
+      postgres: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      otel-collector: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:${CONTENT_PORT:-8083}/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    deploy:
+      <<: *service-resources
+    logging: *service-logging
+    networks: [fogcache-net]
+    restart: unless-stopped
+
+  control:
+    build:
+      context: .
+      args:
+        MODULE: fogcache-control-service
+    image: fogcache-control-service:local
+    container_name: fogcache-control
+    environment:
+      SERVER_PORT: ${CONTROL_PORT:-8084}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/${POSTGRES_DB:-fogcache}
+      SPRING_R2DBC_USERNAME: ${POSTGRES_USER:-fogcache}
+      SPRING_R2DBC_PASSWORD: ${POSTGRES_PASSWORD:-fogcache_dev_password}
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      OTEL_COLLECTOR_ENDPOINT: http://otel-collector:4318
+      TRACE_SAMPLING_PROBABILITY: ${TRACE_SAMPLING_PROBABILITY:-1.0}
+    ports:
+      - "${CONTROL_PORT:-8084}:8084"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      otel-collector: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:${CONTROL_PORT:-8084}/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    deploy:
+      <<: *service-resources
+    logging: *service-logging
+    networks: [fogcache-net]
+    restart: unless-stopped
+
+  analytics:
+    build:
+      context: .
+      args:
+        MODULE: fogcache-analytics-service
+    image: fogcache-analytics-service:local
+    container_name: fogcache-analytics
+    environment:
+      SERVER_PORT: ${ANALYTICS_PORT:-8085}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/${POSTGRES_DB:-fogcache}
+      SPRING_R2DBC_USERNAME: ${POSTGRES_USER:-fogcache}
+      SPRING_R2DBC_PASSWORD: ${POSTGRES_PASSWORD:-fogcache_dev_password}
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      OTEL_COLLECTOR_ENDPOINT: http://otel-collector:4318
+      TRACE_SAMPLING_PROBABILITY: ${TRACE_SAMPLING_PROBABILITY:-1.0}
+    ports:
+      - "${ANALYTICS_PORT:-8085}:8085"
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      otel-collector: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:${ANALYTICS_PORT:-8085}/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    deploy:
+      <<: *service-resources
+    logging: *service-logging
+    networks: [fogcache-net]
+    restart: unless-stopped

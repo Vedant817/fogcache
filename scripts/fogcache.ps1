@@ -133,22 +133,34 @@ function Test-Ports {
 function Wait-ForStack {
     Write-Host '== Waiting for readiness (up to 300s) =='
     $deadline = (Get-Date).AddSeconds(300)
+    $lastProbe = @{}
     do {
         $ready = $true
         foreach ($entry in $services.GetEnumerator()) {
             try {
                 $resp = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 -Uri "http://localhost:$($entry.Value)/actuator/health"
                 $json = $resp.Content | ConvertFrom-Json
-                if ($json.status -ne 'UP') { $ready = $false }
+                if ($json.status -ne 'UP') {
+                    $ready = $false
+                    $lastProbe[$entry.Key] = "actuator status=$($json.status)"
+                } else {
+                    $lastProbe.Remove($entry.Key)
+                }
             } catch {
                 $ready = $false
+                $lastProbe[$entry.Key] = $_.Exception.Message
             }
         }
         if ($ready) { break }
+        if (((Get-Date).Second % 30) -lt 5) {
+            foreach ($k in $lastProbe.Keys) { Write-Host "  waiting: $k -> $($lastProbe[$k])" }
+        }
         Start-Sleep -Seconds 5
     } while ((Get-Date) -lt $deadline)
     if (-not $ready) {
-        Write-Host 'Stack did not become ready. Run "fogcache.ps1 status" to diagnose; resuming is safe - bootstrap is idempotent.'
+        Write-Host 'Stack did not become ready. Last probe results:'
+        foreach ($k in $lastProbe.Keys) { Write-Host "  $k -> $($lastProbe[$k])" }
+        Write-Host 'Run "fogcache.ps1 status" to diagnose; resuming is safe - bootstrap is idempotent.'
         exit 1
     }
     Write-Host '  all services healthy'

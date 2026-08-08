@@ -83,6 +83,12 @@ jobs:
           pwsh -NoProfile scripts/fogcache.ps1 bootstrap --disposable 2>&1 | tee ci-bootstrap.log
           if ! grep -q 'all services healthy' ci-bootstrap.log; then
             echo "bootstrap log missing readiness marker" >&2
+            echo "--- host-side probes (curl) ---" >&2
+            for p in 8080 8081 8082 8083 8084 8085; do
+              curl -sS -m 5 "http://localhost:$p/actuator/health" && echo " <- $p OK" || echo " <- $p FAIL" >&2
+            done
+            echo "--- listeners ---" >&2
+            ss -ltn 2>&1 | head -30 || true
             exit 1
           fi
 
